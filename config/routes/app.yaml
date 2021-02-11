@@ -1,0 +1,13 @@
+home:
+  path: /
+  controller: App\Controller\DefaultController::home
+
+file_add:
+  path: /api/file/add
+  methods: POST
+  controller: App\Controller\ArtifactController::add
+
+file_raw:
+  path: /@{project}/{artifact}
+  methods: GET|HEAD
+  controller: App\Controller\ArtifactController::raw
