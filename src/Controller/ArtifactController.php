@@ -11,42 +11,68 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\String\Slugger\SluggerInterface;
+use Symfony\Contracts\Cache\CacheInterface;
+use Symfony\Contracts\Cache\ItemInterface;
 
 class ArtifactController extends AbstractController
 {
+    /** @var CacheInterface */
+    private $cache;
+
     /** @var EntityManagerInterface */
     private $entityManager;
 
     /** @var SluggerInterface */
     private $slugger;
 
-    public function __construct(EntityManagerInterface $entityManagerInterface, SluggerInterface $sluggerInterface)
-    {
+    public function __construct(
+        CacheInterface $cacheInterface,
+        EntityManagerInterface $entityManagerInterface,
+        SluggerInterface $sluggerInterface
+    ) {
+        $this->cache = $cacheInterface;
         $this->entityManager = $entityManagerInterface;
         $this->slugger = $sluggerInterface;
     }
 
     public function raw(Request $request): Response
     {
-        $projectRepository = $this->entityManager->getRepository(Project::class);
-
-        /** @var Project $project */
-        if (null === $project = $projectRepository->findOneBy(['name' => $request->attributes->get('project')])) {
-            return new Response(null, Response::HTTP_NOT_FOUND);
-        }
-
-        $fileRepository = $this->entityManager->getRepository(File::class);
-
-        /** @var File $file */
-        if (null === $file = $fileRepository->findOneBy(['project' => $project, 'name' => $request->attributes->get('artifact')])) {
-            return new Response(null, Response::HTTP_NOT_FOUND);
-        }
-
-        return new Response(
-            file_get_contents(sprintf('%s%s%s', $this->getParameter('files_dir'), DIRECTORY_SEPARATOR, $file->getPath())),
-            Response::HTTP_OK,
-            ['Content-Type' => $file->getType()],
+        $cacheKey = sprintf(
+            '%s-%s',
+            $projectName = $request->attributes->get('project'),
+            $artifactName = $request->attributes->get('artifact')
         );
+
+        $response = $this->cache->get($cacheKey, function (ItemInterface $item) use ($artifactName, $projectName) {
+            $item->expiresAfter(3600);
+
+            $projectRepository = $this->entityManager->getRepository(Project::class);
+
+            /** @var Project $project */
+            if (null === $project = $projectRepository->findOneBy(['name' => $projectName])) {
+                return false;
+            }
+
+            $fileRepository = $this->entityManager->getRepository(File::class);
+
+            /** @var File $file */
+            if (null === $file = $fileRepository->findOneBy(['project' => $project, 'name' => $artifactName])) {
+                return false;
+            }
+
+            return new Response(
+                file_get_contents(sprintf('%s%s%s', $this->getParameter('files_dir'), DIRECTORY_SEPARATOR, $file->getPath())),
+                Response::HTTP_OK,
+                ['Content-Type' => $file->getType()],
+            );
+        });
+
+        if (!$response instanceof Response) {
+            $this->cache->delete($cacheKey);
+            return new Response(null, Response::HTTP_NOT_FOUND);
+        }
+
+        return $response;
     }
 
     public function add(Request $request): Response
