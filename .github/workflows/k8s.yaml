@@ -1,0 +1,35 @@
+name: Kubernetes
+on:
+  push:
+    tags:
+      - v*
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: mr-smithers-excellent/docker-build-push@v4
+        with:
+          image: shooteram/cdn
+          dockerfile: .devops/Dockerfile
+          registry: ghcr.io
+          username: shooteram
+          password: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+  deploy:
+    needs:
+      - build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: azure/k8s-set-context@v1
+        with:
+          method: kubeconfig
+          kubeconfig: ${{ secrets.KS1_KUBECONFIG }}
+        id: setcontext
+      - uses: olegtarasov/get-tag@v2.1
+      - run: echo "::set-output name=image::ghcr.io/shooteram/cdn:$GIT_TAG_NAME"
+        id: image
+      - uses: azure/k8s-deploy@v1
+        with:
+          manifests: .devops/cdn.shooteram.fr.yaml
+          images: ${{ steps.image.outputs.image }}
