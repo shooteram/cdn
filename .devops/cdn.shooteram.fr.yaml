@@ -17,8 +17,8 @@ spec:
         app: shooteram-cdn
     spec:
       containers:
-        - name: shooteram
-          image: ghcr.io/shooteram/shooteram.fr
+        - name: shooteram-cdn
+          image: ghcr.io/shooteram/cdn
           env:
             - name: APP_ENV
               value: "prod"
@@ -59,7 +59,7 @@ metadata:
   name: shooteram-cdn
 spec:
   rules:
-    - host: shooteram.fr
+    - host: cdn.shooteram.fr
       http:
         paths:
           - path: /
@@ -71,5 +71,5 @@ spec:
                   number: 80
   tls:
     - hosts:
-        - shooteram.fr
+        - cdn.shooteram.fr
       secretName: shooteram.fr

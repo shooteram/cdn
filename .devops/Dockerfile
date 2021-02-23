@@ -2,7 +2,7 @@ FROM alpine:3.13.1
 
 RUN apk update && apk add --no-cache php php-fpm php-phar php-json \
     php-mbstring php-iconv php-openssl php-ctype php-xml php-session \
-    php-dom supervisor nginx vim
+    php-dom php-pdo php-tokenizer supervisor nginx vim
 
 COPY ./.devops/nginx.conf /etc/nginx/conf.d/default.conf
 RUN mkdir -p /run/nginx && touch /run/nginx/nginx.pid && \
@@ -15,7 +15,7 @@ WORKDIR /var/www/cdn.shooteram.fr
 COPY --from=composer:2.0.9 /usr/bin/composer /usr/bin/composer
 
 RUN chown -R nginx:nginx /var/www/cdn.shooteram.fr && \
-    chmod ug+rwx -R /var/www/cdn.shooteram.fr
+    chmod ug+rw -R /var/www/cdn.shooteram.fr
 
 USER nginx
 RUN composer install --no-ansi --no-interaction --no-plugins --no-progress \
