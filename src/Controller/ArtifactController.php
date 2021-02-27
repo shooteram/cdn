@@ -37,8 +37,7 @@ class ArtifactController extends AbstractController
 
     public function raw(Request $request): Response
     {
-        $cacheKey = sprintf(
-            '%s-%s',
+        $cacheKey = $this->cacheKey(
             $projectName = $request->attributes->get('project'),
             $artifactName = $request->attributes->get('artifact')
         );
@@ -77,6 +76,7 @@ class ArtifactController extends AbstractController
 
     public function add(Request $request): Response
     {
+        $invalids = [];
         if (!$request->files->count() || !$request->request->has('project')) {
             return new Response(null, Response::HTTP_NOT_ACCEPTABLE);
         }
@@ -108,9 +108,18 @@ class ArtifactController extends AbstractController
                 $file = (new File)->setName($filename)->setPath($hash)->setProject($project)->setType($type);
                 $this->entityManager->persist($file);
             }
+
+            array_push($invalids, $this->cacheKey($projectName, $filename));
         }
 
         $this->entityManager->flush();
+
+        foreach ($invalids as $invalid) $this->cache->delete($invalid);
         return new Response(null, Response::HTTP_NO_CONTENT);
+    }
+
+    private function cacheKey(string $project, string $artifact): string
+    {
+        return sprintf('%s_%s', $project, $artifact);
     }
 }

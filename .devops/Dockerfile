@@ -25,6 +25,7 @@ RUN composer install --no-ansi --no-interaction --no-plugins --no-progress \
 USER root
 RUN ln -sf /dev/stdout /var/log/nginx/access.log && \
     ln -sf /dev/stderr /var/log/nginx/error.log && \
+    ln -sf /dev/stderr /var/log/nginx/application_php_errors.log && \
     rm -f /etc/nginx/sites-enabled/* && \
     sed -i -e "s/user = nobody/user = nginx/g" /etc/php7/php-fpm.d/www.conf && \
     sed -i -e "s/user = nobody/user = nginx/g" /etc/php7/php-fpm.d/www.conf
